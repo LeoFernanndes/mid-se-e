@@ -1,10 +1,9 @@
 import uvicorn
 from fastapi import Depends, FastAPI, Response
 from fastapi.responses import JSONResponse
-from typing import List, Annotated, Union
+from typing import Annotated
 
-from dto.account import AccountDto
-from dto.event import DepositInputDto, DepositOutputDto, TransferInputDto, TransferOutputDto, WithdrawInputDto, WithdrawOutputDto
+from dto.event import DepositInputDto, TransferInputDto, WithdrawInputDto
 from local_data_source import accounts
 from repositories.LocalAccountRepository import LocalAccountRepository
 from services.accounts import AccountsService
@@ -58,36 +57,6 @@ async def event(event: DepositInputDto | TransferInputDto | WithdrawInputDto,
             if isinstance(e, AccountNotFoundException):
                 return Response(content=str(0), status_code=404)
             return Response(content="internal server error", status_code=400)
-
-
-@app.get("/accounts")
-async def list_accounts(accounts_service: Annotated[AccountsService, Depends(get_accounts_service)]) -> List[AccountDto]:
-    _accounts = accounts_service.list_accounts()
-    return [AccountDto(**account.__dict__) for account in _accounts]
-
-
-# TODO: Apply the following schema definitions to the event case
-@app.get("/schema/", response_model=Union[DepositOutputDto, TransferOutputDto, WithdrawOutputDto], responses={
-    200: {
-        "description": "Successful Response",
-        "content": {
-            "application/json": {
-                "examples": {
-                    "transfer": {
-                        "summary": "Transfer Response",
-                        "value": {"origin": {"id": 1, "balance": 10}, "destination": {"id": 2, "balance": 20}}
-                    },
-                    "withdraw ": {
-                        "summary": "Withdraw Response",
-                        "value": {"origin": {"id": 1, "balance": 15}}
-                    }
-                }
-            }
-        }
-    }
-})
-async def schema():
-    return "ok"
 
 
 if __name__ == "__main__":

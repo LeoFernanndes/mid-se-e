@@ -41,11 +41,11 @@ async def event(event: DepositInputDto | TransferInputDto | WithdrawInputDto,
                 ) -> Response:
 
     if isinstance(event, DepositInputDto):
-        return JSONResponse(accounts_service.deposit(event).dict(), status_code=201)
+        return JSONResponse(accounts_service.deposit(event).model_dump(), status_code=201)
 
     if isinstance(event, TransferInputDto):
         try:
-            return JSONResponse(accounts_service.transference(event).dict(), status_code=201)
+            return JSONResponse(accounts_service.transference(event).model_dump(), status_code=201)
         except Exception as e:
             if isinstance(e, AccountNotFoundException):
                 return Response(content=str(0), status_code=404)
@@ -53,7 +53,7 @@ async def event(event: DepositInputDto | TransferInputDto | WithdrawInputDto,
 
     elif isinstance(event, WithdrawInputDto):
         try:
-            return JSONResponse(content=accounts_service.withdraw(event).dict(), status_code=201)
+            return JSONResponse(content=accounts_service.withdraw(event).model_dump(), status_code=201)
         except Exception as e:
             if isinstance(e, AccountNotFoundException):
                 return Response(content=str(0), status_code=404)

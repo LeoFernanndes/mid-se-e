@@ -1,5 +1,8 @@
 # mid-se-e
 
+## Dependencies
+python 3.10.4
+
 ## Setup
 1. Clone the repository:  
 `git clone https://github.com/LeoFernanndes/mid-se-e.git`

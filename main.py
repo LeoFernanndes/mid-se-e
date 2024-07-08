@@ -45,7 +45,7 @@ async def event(event: DepositInputDto | TransferInputDto | WithdrawInputDto,
 
     if isinstance(event, TransferInputDto):
         try:
-            return JSONResponse(accounts_service.transference(event).model_dump(), status_code=201)
+            return JSONResponse(accounts_service.transfer(event).model_dump(), status_code=201)
         except Exception as e:
             if isinstance(e, AccountNotFoundException):
                 return Response(content=str(0), status_code=404)

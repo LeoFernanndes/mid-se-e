@@ -34,7 +34,7 @@ class AccountsService:
         self._account_repository.reset()
         return None
 
-    def transference(self, transfer_input_dto: TransferInputDto) -> TransferOutputDto:
+    def transfer(self, transfer_input_dto: TransferInputDto) -> TransferOutputDto:
         origin = self._account_repository.get_account_by_id(transfer_input_dto.origin)
         destination = self._account_repository.get_account_by_id(transfer_input_dto.destination)
         if not origin:

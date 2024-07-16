@@ -1,10 +1,13 @@
+import copy
+
+from datetime import datetime
 from typing import List, Union
 
 from application.dto.account import AccountDto
-from application.dto.event import (EventOutputDto, DepositInputDto, DepositOutputDto, TransferInputDto, TransferOutputDto,
+from application.dto.event import (DepositInputDto, DepositOutputDto, TransferInputDto, TransferOutputDto,
                                    WithdrawInputDto, WithdrawOutputDto)
 from domain.models.account import Account
-from domain.models.event import DepositEvent, TransferEvent, WithdrawEvent
+from domain.models.event import Event, DepositEvent, TransferEvent, WithdrawEvent
 from domain.repositories.AccountRepository import AccountRepository
 from domain.repositories.EventRepository import DepositEventRepository, TransferEventRepository, WithdrawEventRepository
 from application.services.exceptions import AccountNotFoundException
@@ -31,7 +34,7 @@ class AccountsService:
         account = self._account_repository.get_account_by_id(deposit_input_dto.destination)
         if not account:
             account = self._create_account(deposit_input_dto.destination)
-        deposit = DepositEvent(deposit_input_dto.destination, amount=deposit_input_dto.amount)
+        deposit = DepositEvent(deposit_input_dto.destination, amount=deposit_input_dto.amount, created=datetime.now())
         self._deposit_event_repository.save(deposit)
         account.balance = self._get_account_balance(deposit_input_dto.destination)
         updated_account = self._account_repository.save(account)
@@ -48,7 +51,7 @@ class AccountsService:
             raise AccountNotFoundException("Account not found.")
         if not destination:
             destination = self._create_account(transfer_input_dto.destination)
-        transfer = TransferEvent(destination=destination.id, origin=origin.id, amount=transfer_input_dto.amount)
+        transfer = TransferEvent(destination=destination.id, origin=origin.id, amount=transfer_input_dto.amount, created=datetime.now())
         self._transfer_event_repository.save(transfer)
         origin.balance = self._get_account_balance(origin.id)
         updated_origin = self._account_repository.save(origin)
@@ -62,7 +65,7 @@ class AccountsService:
         account = self._account_repository.get_account_by_id(withdraw_input_dto.origin)
         if not account:
             raise AccountNotFoundException("Account not found.")
-        withdraw_event = WithdrawEvent(origin=account.id, amount=withdraw_input_dto.amount)
+        withdraw_event = WithdrawEvent(origin=account.id, amount=withdraw_input_dto.amount, created=datetime.now())
         self._withdraw_event_repository.save(withdraw_event)
         account.balance = self._get_account_balance(account.id)
         updated_account = self._account_repository.save(account)
@@ -70,15 +73,38 @@ class AccountsService:
         return WithdrawOutputDto(origin=account_dto)
 
     def _get_account_balance(self, account_id: str) -> int:
-        deposits = self._deposit_event_repository.filter_by_destination_id(account_id)
-        sum_deposits = sum([d.amount for d in deposits])
-        transfers_in = self._transfer_event_repository.filter_by_destination_id(account_id)
-        sum_transfers_in = sum([t.amount for t in transfers_in])
-        transfers_out = self._transfer_event_repository.filter_by_origin_id(account_id)
-        sum_transfers_out = sum([t.amount for t in transfers_out])
-        withdraws = self._withdraw_event_repository.filter_by_origin_id(account_id)
-        sum_withdraws = sum([w.amount for w in withdraws])
-        return sum_deposits + sum_transfers_in - sum_transfers_out - sum_withdraws
+        events = self._get_account_extract(account_id)
+        return sum([e.amount for e in events])
+
+    def _get_account_extract(self, account_id: str) -> List[Event]:
+        deposits = copy.deepcopy(self._deposit_event_repository.filter_by_destination_id(account_id))
+        transfers_in = copy.deepcopy(self._transfer_event_repository.filter_by_destination_id(account_id))
+        transfers_out = copy.deepcopy(self._transfer_event_repository.filter_by_origin_id(account_id))
+        withdraws = copy.deepcopy(self._withdraw_event_repository.filter_by_origin_id(account_id))
+
+        in_events_list = []
+        in_events_list.extend(deposits)
+        in_events_list.extend(transfers_in)
+        in_dict = {}
+        for element in in_events_list:
+            in_dict[element.created] = element
+        out_events_list = []
+        out_events_list.extend(transfers_out)
+        out_events_list.extend(withdraws)
+        out_dict = {}
+        for element in out_events_list:
+            element.amount = -element.amount
+            out_dict[element.created] = element
+
+        ordered_event_list = []
+        merged_dict = {}
+        merged_dict.update(in_dict)
+        merged_dict.update(out_dict)
+        merged_sorted_dict = dict(sorted(merged_dict.items()))
+        for value in merged_sorted_dict.values():
+            ordered_event_list.append(value)
+
+        return ordered_event_list
 
     def _create_account(self, account_id) -> Account:
         return self._account_repository.save(Account(id=account_id, balance=0))

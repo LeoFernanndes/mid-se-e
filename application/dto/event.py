@@ -39,4 +39,4 @@ class WithdrawOutputDto(BaseModel):
 
 class EventOutputDto(BaseModel):
     created: datetime
-    type: Union[Literal["deposit"], Literal["transfer"], Literal["withdraw"]]
+    event: Union[DepositInputDto, TransferInputDto, WithdrawInputDto]

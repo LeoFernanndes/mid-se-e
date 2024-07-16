@@ -3,20 +3,27 @@ from fastapi import Depends, FastAPI, Response
 from fastapi.responses import JSONResponse
 from typing import Annotated
 
-from dto.event import DepositInputDto, TransferInputDto, WithdrawInputDto
-from local_data_source import accounts
-from repositories.LocalAccountRepository import LocalAccountRepository
-from services.accounts import AccountsService
-from services.exceptions import AccountNotFoundException
+from application.dto.event import DepositInputDto, TransferInputDto, WithdrawInputDto
+from infrastructure.persistence.local_data_source import accounts, deposit_events, transfer_events, withdraw_events
+from infrastructure.repositories.LocalAccountRepository import LocalAccountRepository
+from infrastructure.repositories.LocalEventRepository import LocalDepositEventRepository, LocalTransferEventRepository, LocalWithdrawEventRepository
+from application.services.accounts import AccountsService
+from application.services.exceptions import AccountNotFoundException
 
 
 app = FastAPI()
 
 
 def get_accounts_service():
-    accounts_data_source = accounts
-    accounts_repository = LocalAccountRepository(accounts_data_source)
-    return AccountsService(accounts_repository)
+    accounts_repository = LocalAccountRepository(accounts)
+    deposit_repository = LocalDepositEventRepository(deposit_events)
+    transfer_repository = LocalTransferEventRepository(transfer_events)
+    withdraw_repository = LocalWithdrawEventRepository(withdraw_events)
+
+    return AccountsService(account_repository=accounts_repository,
+                           deposit_event_repository=deposit_repository,
+                           transfer_event_repository=transfer_repository,
+                           withdraw_event_repository=withdraw_repository)
 
 
 @app.post("/reset")
@@ -27,10 +34,13 @@ async def reset(accounts_service: Annotated[AccountsService, Depends(get_account
 
 @app.get("/balance")
 async def get_balance(account_id: str, accounts_service: Annotated[AccountsService, Depends(get_accounts_service)]) -> Response:
-    account = accounts_service.get_account_by_id(account_id)
-    if not account:
+    try:
+        account = accounts_service.get_account_balance_by_id(account_id)
+        return Response(content=str(account.balance))
+    except AccountNotFoundException:
         return Response(content=str(0), status_code=404)
-    return Response(content=str(account.balance))
+    except:
+        return Response(content="Internal server error.", status_code=500)
 
 
 # TODO : handle possible internal server errors
@@ -49,8 +59,8 @@ async def event(event: DepositInputDto | TransferInputDto | WithdrawInputDto,
             if isinstance(e, AccountNotFoundException):
                 return Response(content=str(0), status_code=404)
             return Response(content="internal server error", status_code=400)
-
-    elif isinstance(event, WithdrawInputDto):
+        
+    if isinstance(event, WithdrawInputDto):
         try:
             return JSONResponse(content=accounts_service.withdraw(event).model_dump(), status_code=201)
         except Exception as e:

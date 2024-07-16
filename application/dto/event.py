@@ -1,7 +1,8 @@
+from datetime import datetime
 from pydantic import BaseModel
-from typing import Literal
+from typing import Literal, Union
 
-from dto.account import AccountDto
+from application.dto.account import AccountDto
 
 
 class DepositInputDto(BaseModel):
@@ -34,3 +35,8 @@ class WithdrawInputDto(BaseModel):
 
 class WithdrawOutputDto(BaseModel):
     origin: AccountDto
+
+
+class EventOutputDto(BaseModel):
+    created: datetime
+    type: Union[Literal["deposit"], Literal["transfer"], Literal["withdraw"]]

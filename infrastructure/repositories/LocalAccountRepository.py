@@ -1,8 +1,8 @@
 import random
 from typing import List
 
-from repositories.AccountRepository import AccountRepository
-from models.account import Account
+from domain.repositories.AccountRepository import AccountRepository
+from domain.models.account import Account
 
 
 class LocalAccountRepository(AccountRepository):

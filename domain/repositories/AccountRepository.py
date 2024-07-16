@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List
 
-from models.account import Account
+from domain.models.account import Account
 
 
 class AccountRepository(ABC):
